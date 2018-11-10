@@ -3,6 +3,7 @@ from django.http import HttpResponse, Http404, HttpResponseRedirect
 from django.template import loader
 from django.urls import reverse
 from django.views import generic
+from django.utils import timezone
 
 import os
 
@@ -29,8 +30,13 @@ class IndexView(generic.ListView):
     context_object_name = 'latest_question_list'
 
     def get_queryset(self):
-        # return the last five published questions
-        return Question.objects.order_by('-pub_date')[:5]
+        # return the last five published questions (not including those set to be published in the future)
+        # return Question.objects.order_by('-pub_date')[:5]
+        return Question.objects.filter(
+            pub_date__lte=timezone.now()
+        ).exclude(
+            choice__isnull=True
+        ).order_by('-pub_date')[:5]
 
 
 def detail(request, question_id):
@@ -49,6 +55,10 @@ class DetailView(generic.DetailView):
     model = Question
     template_name = 'polls/detail.html'
 
+    def get_queryset(self):
+        # excludes any questions that aren't published yet
+        return Question.objects.filter(pub_date__lte=timezone.now()).exclude(choice__isnull=True)
+
 
 def results(request, question_id):
     # response = "You're looking at the results of question %s."
@@ -60,6 +70,10 @@ def results(request, question_id):
 class ResultsView(generic.DetailView):
     model = Question
     template_name = 'polls/results.html'
+
+    def get_queryset(self):
+        # excludes any questions that aren't published yet
+        return Question.objects.filter(pub_date__lte=timezone.now()).exclude(choice__isnull=True)
 
 
 def vote(request, question_id):
